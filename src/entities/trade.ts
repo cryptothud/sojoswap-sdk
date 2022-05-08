@@ -9,7 +9,7 @@ import {
   sortedInsert,
   TradeType
 } from '@uniswap/sdk-core'
-import { ONE, ZERO } from '../constants'
+import { FACTORY_CONFIG, ONE, ZERO } from '../constants'
 import invariant from 'tiny-invariant'
 
 import { Pair } from './pair'
@@ -115,9 +115,10 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
    */
   public static exactIn<TInput extends Currency, TOutput extends Currency>(
     route: Route<TInput, TOutput>,
-    amountIn: CurrencyAmount<TInput>
+    amountIn: CurrencyAmount<TInput>,
+    config: FACTORY_CONFIG
   ): Trade<TInput, TOutput, TradeType.EXACT_INPUT> {
-    return new Trade(route, amountIn, TradeType.EXACT_INPUT)
+    return new Trade(route, amountIn, TradeType.EXACT_INPUT, config)
   }
 
   /**
@@ -127,15 +128,17 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
    */
   public static exactOut<TInput extends Currency, TOutput extends Currency>(
     route: Route<TInput, TOutput>,
-    amountOut: CurrencyAmount<TOutput>
+    amountOut: CurrencyAmount<TOutput>,
+    config: FACTORY_CONFIG
   ): Trade<TInput, TOutput, TradeType.EXACT_OUTPUT> {
-    return new Trade(route, amountOut, TradeType.EXACT_OUTPUT)
+    return new Trade(route, amountOut, TradeType.EXACT_OUTPUT, config)
   }
 
   public constructor(
     route: Route<TInput, TOutput>,
     amount: TTradeType extends TradeType.EXACT_INPUT ? CurrencyAmount<TInput> : CurrencyAmount<TOutput>,
-    tradeType: TTradeType
+    tradeType: TTradeType,
+    config: FACTORY_CONFIG
   ) {
     this.route = route
     this.tradeType = tradeType
@@ -146,7 +149,7 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
       tokenAmounts[0] = amount.wrapped
       for (let i = 0; i < route.path.length - 1; i++) {
         const pair = route.pairs[i]
-        const [outputAmount] = pair.getOutputAmount(tokenAmounts[i])
+        const [outputAmount] = pair.getOutputAmount(tokenAmounts[i], config)
         tokenAmounts[i + 1] = outputAmount
       }
       this.inputAmount = CurrencyAmount.fromFractionalAmount(route.input, amount.numerator, amount.denominator)
@@ -160,7 +163,7 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
       tokenAmounts[tokenAmounts.length - 1] = amount.wrapped
       for (let i = route.path.length - 1; i > 0; i--) {
         const pair = route.pairs[i - 1]
-        const [inputAmount] = pair.getInputAmount(tokenAmounts[i])
+        const [inputAmount] = pair.getInputAmount(tokenAmounts[i], config)
         tokenAmounts[i - 1] = inputAmount
       }
       this.inputAmount = CurrencyAmount.fromFractionalAmount(
@@ -229,11 +232,12 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
     pairs: Pair[],
     currencyAmountIn: CurrencyAmount<TInput>,
     currencyOut: TOutput,
+    config: FACTORY_CONFIG,
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
     // used in recursion.
     currentPairs: Pair[] = [],
     nextAmountIn: CurrencyAmount<Currency> = currencyAmountIn,
-    bestTrades: Trade<TInput, TOutput, TradeType.EXACT_INPUT>[] = []
+    bestTrades: Trade<TInput, TOutput, TradeType.EXACT_INPUT>[] = [],
   ): Trade<TInput, TOutput, TradeType.EXACT_INPUT>[] {
     invariant(pairs.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
@@ -249,10 +253,10 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
 
       let amountOut: CurrencyAmount<Token>
       try {
-        ;[amountOut] = pair.getOutputAmount(amountIn)
+        ;[amountOut] = pair.getOutputAmount(amountIn, config)
       } catch (error) {
         // input too low
-        if (error.isInsufficientInputAmountError) {
+        if ((error as unknown as any).isInsufficientInputAmountError) {
           continue
         }
         throw error
@@ -264,7 +268,8 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
           new Trade(
             new Route([...currentPairs, pair], currencyAmountIn.currency, currencyOut),
             currencyAmountIn,
-            TradeType.EXACT_INPUT
+            TradeType.EXACT_INPUT,
+            config
           ),
           maxNumResults,
           tradeComparator
@@ -277,13 +282,14 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
           pairsExcludingThisPair,
           currencyAmountIn,
           currencyOut,
+          config,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
           [...currentPairs, pair],
           amountOut,
-          bestTrades
+          bestTrades,
         )
       }
     }
@@ -323,11 +329,12 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
     pairs: Pair[],
     currencyIn: TInput,
     currencyAmountOut: CurrencyAmount<TOutput>,
+    config: FACTORY_CONFIG,
     { maxNumResults = 3, maxHops = 3 }: BestTradeOptions = {},
     // used in recursion.
     currentPairs: Pair[] = [],
     nextAmountOut: CurrencyAmount<Currency> = currencyAmountOut,
-    bestTrades: Trade<TInput, TOutput, TradeType.EXACT_OUTPUT>[] = []
+    bestTrades: Trade<TInput, TOutput, TradeType.EXACT_OUTPUT>[] = [],
   ): Trade<TInput, TOutput, TradeType.EXACT_OUTPUT>[] {
     invariant(pairs.length > 0, 'PAIRS')
     invariant(maxHops > 0, 'MAX_HOPS')
@@ -343,10 +350,10 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
 
       let amountIn: CurrencyAmount<Token>
       try {
-        ;[amountIn] = pair.getInputAmount(amountOut)
+        ;[amountIn] = pair.getInputAmount(amountOut, config)
       } catch (error) {
         // not enough liquidity in this pair
-        if (error.isInsufficientReservesError) {
+        if ((error as unknown as any).isInsufficientReservesError) {
           continue
         }
         throw error
@@ -358,7 +365,8 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
           new Trade(
             new Route([pair, ...currentPairs], currencyIn, currencyAmountOut.currency),
             currencyAmountOut,
-            TradeType.EXACT_OUTPUT
+            TradeType.EXACT_OUTPUT,
+            config
           ),
           maxNumResults,
           tradeComparator
@@ -371,13 +379,14 @@ export class Trade<TInput extends Currency, TOutput extends Currency, TTradeType
           pairsExcludingThisPair,
           currencyIn,
           currencyAmountOut,
+          config,
           {
             maxNumResults,
             maxHops: maxHops - 1
           },
           [pair, ...currentPairs],
           amountIn,
-          bestTrades
+          bestTrades,
         )
       }
     }

@@ -3,6 +3,7 @@ import { Route } from './route'
 import { Trade } from './trade'
 import JSBI from 'jsbi'
 import { Ether, CurrencyAmount, Percent, Token, TradeType, WETH9, Price } from '@uniswap/sdk-core'
+import { UNISWAP_DEFAULT_CONFIG } from '../constants'
 
 describe('Trade', () => {
   const ETHER = Ether.onChain(1)
@@ -13,40 +14,48 @@ describe('Trade', () => {
 
   const pair_0_1 = new Pair(
     CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000)),
-    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1000))
+    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1000)),
+    UNISWAP_DEFAULT_CONFIG
   )
   const pair_0_2 = new Pair(
     CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000)),
-    CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1100))
+    CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1100)),
+    UNISWAP_DEFAULT_CONFIG
   )
   const pair_0_3 = new Pair(
     CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000)),
-    CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(900))
+    CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(900)),
+    UNISWAP_DEFAULT_CONFIG
   )
   const pair_1_2 = new Pair(
     CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1200)),
-    CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1000))
+    CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1000)),
+    UNISWAP_DEFAULT_CONFIG
   )
   const pair_1_3 = new Pair(
     CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1200)),
-    CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(1300))
+    CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(1300)),
+    UNISWAP_DEFAULT_CONFIG
   )
 
   const pair_weth_0 = new Pair(
     CurrencyAmount.fromRawAmount(WETH9[1], JSBI.BigInt(1000)),
-    CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000))
+    CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000)),
+    UNISWAP_DEFAULT_CONFIG
   )
 
   const empty_pair_0_1 = new Pair(
     CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(0)),
-    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(0))
+    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(0)),
+    UNISWAP_DEFAULT_CONFIG
   )
 
   it('can be constructed with ETHER as input', () => {
     const trade = new Trade(
       new Route([pair_weth_0], ETHER, token0),
       CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100)),
-      TradeType.EXACT_INPUT
+      TradeType.EXACT_INPUT,
+      UNISWAP_DEFAULT_CONFIG
     )
     expect(trade.inputAmount.currency).toEqual(ETHER)
     expect(trade.outputAmount.currency).toEqual(token0)
@@ -55,7 +64,8 @@ describe('Trade', () => {
     const trade = new Trade(
       new Route([pair_weth_0], ETHER, token0),
       CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)),
-      TradeType.EXACT_OUTPUT
+      TradeType.EXACT_OUTPUT,
+      UNISWAP_DEFAULT_CONFIG
     )
     expect(trade.inputAmount.currency).toEqual(ETHER)
     expect(trade.outputAmount.currency).toEqual(token0)
@@ -65,7 +75,8 @@ describe('Trade', () => {
     const trade = new Trade(
       new Route([pair_weth_0], token0, ETHER),
       CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100)),
-      TradeType.EXACT_OUTPUT
+      TradeType.EXACT_OUTPUT,
+      UNISWAP_DEFAULT_CONFIG
     )
     expect(trade.inputAmount.currency).toEqual(token0)
     expect(trade.outputAmount.currency).toEqual(ETHER)
@@ -74,7 +85,8 @@ describe('Trade', () => {
     const trade = new Trade(
       new Route([pair_weth_0], token0, ETHER),
       CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)),
-      TradeType.EXACT_INPUT
+      TradeType.EXACT_INPUT,
+      UNISWAP_DEFAULT_CONFIG
     )
     expect(trade.inputAmount.currency).toEqual(token0)
     expect(trade.outputAmount.currency).toEqual(ETHER)
@@ -82,13 +94,13 @@ describe('Trade', () => {
 
   describe('#bestTradeExactIn', () => {
     it('throws with empty pairs', () => {
-      expect(() => Trade.bestTradeExactIn([], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token2)).toThrow(
+      expect(() => Trade.bestTradeExactIn([], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token2, UNISWAP_DEFAULT_CONFIG)).toThrow(
         'PAIRS'
       )
     })
     it('throws with max hops of 0', () => {
       expect(() =>
-        Trade.bestTradeExactIn([pair_0_2], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token2, {
+        Trade.bestTradeExactIn([pair_0_2], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token2, UNISWAP_DEFAULT_CONFIG, {
           maxHops: 0
         })
       ).toThrow('MAX_HOPS')
@@ -98,7 +110,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactIn(
         [pair_0_1, pair_0_2, pair_1_2],
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)),
-        token2
+        token2,
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
@@ -113,7 +126,7 @@ describe('Trade', () => {
 
     it('doesnt throw for zero liquidity pairs', () => {
       expect(
-        Trade.bestTradeExactIn([empty_pair_0_1], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token1)
+        Trade.bestTradeExactIn([empty_pair_0_1], CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)), token1, UNISWAP_DEFAULT_CONFIG)
       ).toHaveLength(0)
     })
 
@@ -122,6 +135,7 @@ describe('Trade', () => {
         [pair_0_1, pair_0_2, pair_1_2],
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(10)),
         token2,
+        UNISWAP_DEFAULT_CONFIG,
         { maxHops: 1 }
       )
       expect(result).toHaveLength(1)
@@ -133,7 +147,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactIn(
         [pair_0_1, pair_0_2, pair_1_2],
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1)),
-        token2
+        token2,
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(1)
       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
@@ -146,6 +161,7 @@ describe('Trade', () => {
         [pair_0_1, pair_0_2, pair_1_2],
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(10)),
         token2,
+        UNISWAP_DEFAULT_CONFIG,
         { maxNumResults: 1 }
       )
 
@@ -156,7 +172,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactIn(
         [pair_0_1, pair_0_3, pair_1_3],
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(10)),
-        token2
+        token2,
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(0)
     })
@@ -165,7 +182,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactIn(
         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
         CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100)),
-        token3
+        token3,
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].inputAmount.currency).toEqual(ETHER)
@@ -179,7 +197,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactIn(
         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
         CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(100)),
-        ETHER
+        ETHER,
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].inputAmount.currency).toEqual(token3)
@@ -196,7 +215,8 @@ describe('Trade', () => {
       const exactIn = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)),
-        TradeType.EXACT_INPUT
+        TradeType.EXACT_INPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
       it('throws if less than 0', () => {
         expect(() => exactIn.maximumAmountIn(new Percent(JSBI.BigInt(-1), JSBI.BigInt(100)))).toThrow(
@@ -222,7 +242,8 @@ describe('Trade', () => {
       const exactOut = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)),
-        TradeType.EXACT_OUTPUT
+        TradeType.EXACT_OUTPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
 
       it('throws if less than 0', () => {
@@ -252,7 +273,8 @@ describe('Trade', () => {
       const exactIn = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(100)),
-        TradeType.EXACT_INPUT
+        TradeType.EXACT_INPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
       it('throws if less than 0', () => {
         expect(() => exactIn.minimumAmountOut(new Percent(JSBI.BigInt(-1), JSBI.BigInt(100)))).toThrow(
@@ -278,7 +300,8 @@ describe('Trade', () => {
       const exactOut = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)),
-        TradeType.EXACT_OUTPUT
+        TradeType.EXACT_OUTPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
 
       it('throws if less than 0', () => {
@@ -308,7 +331,8 @@ describe('Trade', () => {
       const exactIn = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token0, 100),
-        TradeType.EXACT_INPUT
+        TradeType.EXACT_INPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
       it('throws if less than 0', () => {
         expect(() => exactIn.minimumAmountOut(new Percent(-1, 100))).toThrow('SLIPPAGE_TOLERANCE')
@@ -326,7 +350,8 @@ describe('Trade', () => {
       const exactOut = new Trade(
         new Route([pair_0_1, pair_1_2], token0, token2),
         CurrencyAmount.fromRawAmount(token2, 100),
-        TradeType.EXACT_OUTPUT
+        TradeType.EXACT_OUTPUT,
+        UNISWAP_DEFAULT_CONFIG
       )
 
       it('throws if less than 0', () => {
@@ -345,13 +370,13 @@ describe('Trade', () => {
 
   describe('#bestTradeExactOut', () => {
     it('throws with empty pairs', () => {
-      expect(() => Trade.bestTradeExactOut([], token0, CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)))).toThrow(
+      expect(() => Trade.bestTradeExactOut([], token0, CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)), UNISWAP_DEFAULT_CONFIG)).toThrow(
         'PAIRS'
       )
     })
     it('throws with max hops of 0', () => {
       expect(() =>
-        Trade.bestTradeExactOut([pair_0_2], token0, CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)), {
+        Trade.bestTradeExactOut([pair_0_2], token0, CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)), UNISWAP_DEFAULT_CONFIG, {
           maxHops: 0
         })
       ).toThrow('MAX_HOPS')
@@ -361,7 +386,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_0_1, pair_0_2, pair_1_2],
         token0,
-        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100))
+        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(100)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].route.pairs).toHaveLength(1) // 0 -> 2 at 10:11
@@ -376,7 +402,7 @@ describe('Trade', () => {
 
     it('doesnt throw for zero liquidity pairs', () => {
       expect(
-        Trade.bestTradeExactOut([empty_pair_0_1], token1, CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100)))
+        Trade.bestTradeExactOut([empty_pair_0_1], token1, CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100)), UNISWAP_DEFAULT_CONFIG)
       ).toHaveLength(0)
     })
 
@@ -385,6 +411,7 @@ describe('Trade', () => {
         [pair_0_1, pair_0_2, pair_1_2],
         token0,
         CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(10)),
+        UNISWAP_DEFAULT_CONFIG,
         { maxHops: 1 }
       )
       expect(result).toHaveLength(1)
@@ -396,7 +423,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_0_1, pair_0_2, pair_1_2],
         token0,
-        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1200))
+        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1200)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(0)
     })
@@ -405,7 +433,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_0_1, pair_0_2, pair_1_2],
         token0,
-        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1050))
+        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(1050)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(1)
     })
@@ -415,6 +444,7 @@ describe('Trade', () => {
         [pair_0_1, pair_0_2, pair_1_2],
         token0,
         CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(10)),
+        UNISWAP_DEFAULT_CONFIG,
         { maxNumResults: 1 }
       )
 
@@ -425,7 +455,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_0_1, pair_0_3, pair_1_3],
         token0,
-        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(10))
+        CurrencyAmount.fromRawAmount(token2, JSBI.BigInt(10)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(0)
     })
@@ -434,7 +465,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
         ETHER,
-        CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(100))
+        CurrencyAmount.fromRawAmount(token3, JSBI.BigInt(100)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].inputAmount.currency).toEqual(ETHER)
@@ -448,7 +480,8 @@ describe('Trade', () => {
       const result = Trade.bestTradeExactOut(
         [pair_weth_0, pair_0_1, pair_0_3, pair_1_3],
         token3,
-        CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
+        CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100)),
+        UNISWAP_DEFAULT_CONFIG
       )
       expect(result).toHaveLength(2)
       expect(result[0].inputAmount.currency).toEqual(token3)
